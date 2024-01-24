@@ -20,6 +20,10 @@ import { db } from "../firebase";
 import { ChatContext } from "../../context/ChatContext";
 import { v4 as uuid } from "uuid";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
+import { PiGifBold } from "react-icons/pi";
+import { AiOutlinePicture } from "react-icons/ai";
+import { TiDelete } from "react-icons/ti";
+import { LiaRocketchat } from "react-icons/lia";
 
 export default function Chat() {
   const imageInputRef = useRef(null);
@@ -32,12 +36,19 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [img, setImg] = useState(null);
+  const [selectChat, setSelectChat] = useState();
+  const [numberChat, setNumberChat] = useState(0);
 
   const chatSelect = (user) => {
+    // console.log(`diclick chatSelect`)
     dispatch({ type: "CHANGE_USER", payload: user });
+    // console.log(user, `===ini user===`)
+    setSelectChat(user);
   };
 
-  // console.log(currentUser, `sebelum=======++++`);
+  const logoutSelect = () => {
+    dispatch({ type: "LOG_OUT", payload: user });
+  };
 
   useEffect(() => {
     let unsub;
@@ -52,8 +63,6 @@ export default function Chat() {
       currentUser && unsub();
     };
   }, [currentUser]);
-
-  // console.log(currentUser, `sesudah====`);
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -102,6 +111,8 @@ export default function Chat() {
           [combinedId + ".date"]: serverTimestamp(),
         });
       }
+
+      setUser(null);
     } catch (error) {
       console.log(error);
     }
@@ -120,37 +131,23 @@ export default function Chat() {
   const handleSend = async (e) => {
     e.preventDefault();
     if (img) {
-      const imgId = uuid();
-      // img.name = imgId
-      setImg((prev) => ({ ...prev, name: imgId }));
+      const storageRef = ref(storage, uuid());
 
-      const storageRef = ref(storage, imgId);
-
-      const uploadTask = uploadBytesResumable(storageRef, img);
-
-      uploadTask.on(
-        (error) => {
-          alert(error);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            await updateDoc(doc(db, "chats", data.chatId), {
-              messages: arrayUnion({
-                id: uuid(),
-                name: currentUser.displayName,
-                text: newMessage,
-                senderId: currentUser.uid,
-                photoURL: currentUser.photoURL,
-                date: Timestamp.now(),
-                img: downloadURL,
-              }),
-            });
+      const uploadTask = uploadBytesResumable(storageRef, img).then(() => {
+        getDownloadURL(storageRef).then(async (downloadURL) => {
+          await updateDoc(doc(db, "chats", data.chatId), {
+            messages: arrayUnion({
+              id: uuid(),
+              name: currentUser.displayName,
+              text: newMessage,
+              senderId: currentUser.uid,
+              photoURL: currentUser.photoURL,
+              date: Timestamp.now(),
+              img: downloadURL,
+            }),
           });
-          // setNewMessage(() => "");
-          // setImg(() => null);
-          // imageInputRef.current.value = "";
-        }
-      );
+        });
+      });
     } else {
       await updateDoc(doc(db, "chats", data.chatId), {
         messages: arrayUnion({
@@ -169,8 +166,13 @@ export default function Chat() {
     imageInputRef.current.value = "";
   };
 
+  const removeImg = () => {
+    setImg(null);
+    imageInputRef.current.value = "";
+  };
+
   useEffect(() => {
-    if(messages.length > 0) {
+    if (messages.length > 0) {
       document
         .querySelector(".flex.flex-col.h-full.overflow-x-auto.mb-4")
         .scrollTo(
@@ -184,12 +186,13 @@ export default function Chat() {
   if (!currentUser) {
     return <div>Loading</div>;
   }
+
   return (
     <>
       {/* component */}
       <div className="flex h-screen antialiased text-gray-800">
         <div className="flex flex-row h-full w-full overflow-x-hidden">
-          <div className="flex flex-col py-8 pl-6 pr-2 w-64 bg-white flex-shrink-0">
+          <div className="flex flex-col gap-3 py-8 pl-6 pr-2 w-64 bg-white flex-shrink-0">
             <div className="flex flex-row items-center justify-center h-12 w-full">
               <div className="flex items-center justify-center rounded-2xl text-indigo-700 bg-indigo-100 h-10 w-10">
                 <svg
@@ -207,7 +210,7 @@ export default function Chat() {
                   />
                 </svg>
               </div>
-              <div className="ml-2 font-bold text-2xl">QuickChat</div>
+              <div className="ml-2 font-bold text-2xl">Halo-Chat</div>
             </div>
             <div className="flex flex-col items-center bg-indigo-100 border border-gray-200 mt-4 w-full py-6 px-4 rounded-lg">
               <div className="h-20 w-20 rounded-full border overflow-hidden">
@@ -220,13 +223,15 @@ export default function Chat() {
               <div className="text-sm font-semibold mt-2">
                 {currentUser && currentUser.displayName}
               </div>
-              <div className="text-xs text-gray-500">Lead UI/UX Designer</div>
+              {/* <div className="text-xs text-gray-500">Lead UI/UX Designer</div> */}
               <div className="flex flex-row items-center mt-3">
                 <button
                   className="middle none center rounded-lg bg-red-500 py-3 px-6 font-sans text-xs font-bold uppercase text-white shadow-md shadow-red-500/20 transition-all hover:shadow-lg hover:shadow-red-500/40 focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                   data-ripple-light="true"
                   onClick={() => {
                     signOut(auth);
+                    setMessages([]);
+                    logoutSelect();
                     localStorage.clear();
                   }}
                 >
@@ -234,9 +239,9 @@ export default function Chat() {
                 </button>
               </div>
             </div>
-            <div className="flex flex-col mt-8">
+            <div>
               <div className="flex flex-row items-center justify-between text-xs">
-                <span className="font-bold">Active Conversations</span>
+                <span className="font-bold">Search for User</span>
               </div>
               {/* component */}
               {/* This is an example component */}
@@ -271,50 +276,59 @@ export default function Chat() {
                   </button>
                 </div>
               </form>
-              {user && (
+              <div className="">
                 <div className="flex flex-col space-y-1 mt-4 -mx-2 h-auto overflow-y-auto">
-                  <button
-                    className="flex flex-row items-center hover:bg-gray-100 rounded-xl p-2"
-                    onClick={handleSelect}
-                  >
-                    <div className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full">
-                      <img
-                        src={user.photoURL}
-                        alt=""
-                        className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full"
-                      />
-                    </div>
-                    <div className="ml-2 text-sm font-semibold">
-                      {user.displayName}
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
-            {Object.entries(chats)?.map((chat) => {
-              return (
-                <div key={chat[0]}>
-                  <div className="flex flex-col space-y-1 mt-4 -mx-2 h-auto overflow-y-auto">
+                  {user && (
                     <button
                       className="flex flex-row items-center hover:bg-gray-100 rounded-xl p-2"
-                      onClick={() => chatSelect(chat[1].userInfo)}
+                      onClick={handleSelect}
                     >
                       <div className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full">
                         <img
-                          src={chat[1].userInfo.photoURL}
+                          src={user.photoURL}
                           alt=""
                           className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full"
                         />
                       </div>
                       <div className="ml-2 text-sm font-semibold">
-                        <span>{chat[1].userInfo.displayName}</span>
-                        <p>{chat[1].lastMessage?.text}</p>
+                        {user.displayName}
                       </div>
                     </button>
-                  </div>
+                  )}
                 </div>
-              );
-            })}
+              </div>
+            </div>
+            <div className="flex flex-row items-center justify-between text-xs">
+              <span className="font-bold">Active Conversations</span>
+              {/* <span className="flex items-center justify-center bg-gray-300 h-4 w-4 rounded-full">
+                {numberChat}
+              </span> */}
+            </div>
+            <div className="flex flex-col space-y-1 mt-4 -mx-2 h-52 overflow-y-auto">
+              {chats && Object.entries(chats)?.map((chat) => {
+                return (
+                  <button key={chat[1].userInfo.uid}
+                    className={ selectChat && 
+                      chat[1].userInfo.uid == selectChat.uid
+                        ? "flex flex-row items-center bg-gray-100 rounded-xl p-2"
+                        : "flex flex-row items-center hover:bg-gray-100 rounded-xl p-2"
+                    }
+                    onClick={() => chatSelect(chat[1].userInfo)}
+                  >
+                    <div className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full">
+                      <img
+                        src={chat[1].userInfo.photoURL}
+                        alt="profpic"
+                        className="flex items-center justify-center h-8 w-8 bg-indigo-200 rounded-full"
+                      />
+                    </div>
+                    <div className="ml-2 text-sm font-semibold">
+                      {chat[1].userInfo.displayName}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div className="flex flex-col flex-auto h-full p-6">
             <div className="flex flex-col flex-auto flex-shrink-0 rounded-2xl bg-gray-100 h-full p-4">
@@ -379,44 +393,66 @@ export default function Chat() {
                   </div>
                 </div>
               </div>
-              <div className="flex flex-row items-center h-16 rounded-xl bg-white w-full px-4">
-                <div>
-                  <input
-                    type="file"
-                    className="flex items-center justify-center text-gray-400 hover:text-gray-600"
-                    id="file"
-                    // value={[img]}
-                    ref={imageInputRef}
-                    onChange={(e) => setImg(e.target.files[0])}
-                  >
-                    {/* <svg
-                      className="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"
-                      />
-                    </svg> */}
-                  </input>
-                </div>
-                <div className="flex-grow ml-4">
-                  <form onSubmit={handleSend}>
-                    <div className="relative w-full">
+              {selectChat && (
+                <div className="flex flex-row items-center h-16 rounded-xl bg-white w-full px-4">
+                  <div className="flex flex-column items-center">
+                    <div>
+                      <label htmlFor="file">
+                        <i className="flex items-center flex-column justify-center">
+                          <AiOutlinePicture className="size-6" />
+                        </i>
+                      </label>
                       <input
-                        type="text"
-                        className="flex w-full border rounded-xl focus:outline-none focus:border-indigo-300 pl-4 h-10"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                      />
-                      <button className="absolute flex items-center justify-center h-full w-12 right-0 top-0 text-gray-400 hover:text-gray-600">
+                        type="file"
+                        className="hidden invisible"
+                        id="file"
+                        ref={imageInputRef}
+                        onChange={(e) => {
+                          setImg(e.target.files[0]);
+                        }}
+                      ></input>
+                      <div>
+                        {img && (
+                          <p className="bg-slate-400 rounded-3xl px-2 py-1 flex flex-row items-center justify-center justify-items-center">
+                            {img.name}
+                            <button onClick={removeImg}>
+                              <TiDelete className="size-6" />
+                            </button>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-grow ml-4">
+                    <form onSubmit={handleSend}>
+                      <div className="relative w-full">
+                        <input
+                          type="text"
+                          className="flex w-full border rounded-xl focus:outline-none focus:border-indigo-300 pl-4 h-10"
+                          value={newMessage}
+                          onChange={(e) => setNewMessage(e.target.value)}
+                        />
+                        <button
+                          className="absolute flex items-center justify-center h-full w-12 right-0 top-0 text-gray-400 hover:text-gray-600 "
+                          onClick={() => {
+                            console.log("abxdc");
+                          }}
+                          type="button"
+                        >
+                          <PiGifBold />
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                  <div className="ml-4">
+                    <button
+                      className="flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white px-4 py-1 flex-shrink-0"
+                      onClick={handleSend}
+                    >
+                      <span>Send</span>
+                      <span className="ml-2">
                         <svg
-                          className="w-6 h-6"
+                          className="w-4 h-4 transform rotate-45 -mt-px"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -426,38 +462,14 @@ export default function Chat() {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
                           />
                         </svg>
-                      </button>
-                    </div>
-                  </form>
+                      </span>
+                    </button>
+                  </div>
                 </div>
-                <div className="ml-4">
-                  <button
-                    className="flex items-center justify-center bg-indigo-500 hover:bg-indigo-600 rounded-xl text-white px-4 py-1 flex-shrink-0"
-                    onClick={handleSend}
-                  >
-                    <span>Send</span>
-                    <span className="ml-2">
-                      <svg
-                        className="w-4 h-4 transform rotate-45 -mt-px"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                        />
-                      </svg>
-                    </span>
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

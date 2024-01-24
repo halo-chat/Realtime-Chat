@@ -10,10 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "emoji-mart": "^5.5.2",
     "firebase": "^10.7.2",
     "firebase-admin": "^12.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-giphy-searchbox": "^1.5.4",
+    "react-icons": "^5.0.1",
     "react-router-dom": "^6.21.3",
     "uuid": "^9.0.1"
   },

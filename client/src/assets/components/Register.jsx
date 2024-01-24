@@ -1,48 +1,52 @@
-import { createUserWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
+import {
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile,
+} from "firebase/auth";
 import { auth, db, storage } from "../firebase";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import { FaImages } from "react-icons/fa6";
+import { useState } from "react";
 
 export default function Register() {
   const navigate = useNavigate();
+
+  const [file, setFile] = useState(null);
+
+  console.log(file, `ini file`);
 
   const registerHandler = async (e) => {
     e.preventDefault();
     let displayName = e.target[0].value;
     let email = e.target[1].value;
     let password = e.target[2].value;
-    let file = e.target[3].files[0];
+
+    console.log(file);
     try {
       const res = await createUserWithEmailAndPassword(auth, email, password);
 
       const storageRef = ref(storage, displayName);
 
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        (error) => {
-          alert(error);
-        },
-        () => {
-          getDownloadURL(uploadTask.snapshot.ref).then(async (downloadURL) => {
-            await updateProfile(res.user, {
-              displayName,
-              photoURL: downloadURL,
-            });
-            await setDoc(doc(db, "users", res.user.uid), {
-              uid: res.user.uid,
-              displayName,
-              email,
-              photoURL: downloadURL,
-            });
-            
-            await setDoc(doc(db, "userChats", res.user.uid), {});
-            localStorage.set("email", email)
-            navigate("/");
+      const uploadTask = uploadBytesResumable(storageRef, file).then(() => {
+        getDownloadURL(storageRef).then(async (downloadURL) => {
+          await updateProfile(res.user, {
+            displayName,
+            photoURL: downloadURL,
           });
-        }
-      );
+          await setDoc(doc(db, "users", res.user.uid), {
+            uid: res.user.uid,
+            displayName,
+            email,
+            photoURL: downloadURL,
+          });
+          await setDoc(doc(db, "userChats", res.user.uid), {});
+          console.log('selesai bikin no error')
+        });
+      });
+      localStorage.setItem("email", email);
+      navigate("/")
     } catch (error) {
       console.log(error);
     }
@@ -217,12 +221,21 @@ export default function Register() {
                 style={{ display: "none" }}
                 type="file"
                 id="file"
+                onChange={(e) => setFile(e.target.files[0])}
               />
-              <label htmlFor="file">
-                {/* <img src={Add} alt="" /> */}
-                <span>Add an avatar</span>
-              </label>
-              <div className="flex w-full">
+              <div className="flex items-center justify-center">
+                <div>
+                  <label htmlFor="file">
+                    <div className="bg-gray-400 flex flex-row items-center justify-center gap-3 rounded-xl px-2 py-1">
+                      <FaImages className="size-6" />
+                      <p>
+                        {file && file !== null ? file.name : "Add an Image"}
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+              <div className="flex w-full ">
                 <button
                   type="submit"
                   className="

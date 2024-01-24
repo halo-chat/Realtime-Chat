@@ -12,6 +12,7 @@ import Register from './assets/components/Register';
 import Chat from './assets/components/Chat';
 import { useContext } from 'react';
 import { AuthContext } from './context/AuthContext';
+import Testing from './assets/components/Testing';
 
 function App() {
 
@@ -50,6 +51,10 @@ function App() {
         }
         return null;
       }
+    },
+    {
+      path: "/testing",
+      element: <Testing />
     }
   ])
 
