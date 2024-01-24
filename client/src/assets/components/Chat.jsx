@@ -1,6 +1,6 @@
 import { signOut } from "firebase/auth";
 import { auth, storage } from "../firebase";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import {
   Timestamp,
@@ -22,6 +22,7 @@ import { v4 as uuid } from "uuid";
 import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
 
 export default function Chat() {
+  const imageInputRef = useRef(null);
   const { currentUser } = useContext(AuthContext);
   const { dispatch } = useContext(ChatContext);
   const { data } = useContext(ChatContext);
@@ -36,13 +37,12 @@ export default function Chat() {
     dispatch({ type: "CHANGE_USER", payload: user });
   };
 
-  console.log(currentUser, `sebelum=======++++`)
+  // console.log(currentUser, `sebelum=======++++`);
 
   useEffect(() => {
-    
     let unsub;
 
-    if(currentUser) {
+    if (currentUser) {
       unsub = onSnapshot(doc(db, "userChats", currentUser.uid), (doc) => {
         setChats(doc.data());
       });
@@ -53,7 +53,7 @@ export default function Chat() {
     };
   }, [currentUser]);
 
-  console.log(currentUser, `sesudah====`)
+  // console.log(currentUser, `sesudah====`);
 
   const submitHandler = async (e) => {
     e.preventDefault();
@@ -120,7 +120,11 @@ export default function Chat() {
   const handleSend = async (e) => {
     e.preventDefault();
     if (img) {
-      const storageRef = ref(storage, uuid());
+      const imgId = uuid();
+      // img.name = imgId
+      setImg((prev) => ({ ...prev, name: imgId }));
+
+      const storageRef = ref(storage, imgId);
 
       const uploadTask = uploadBytesResumable(storageRef, img);
 
@@ -133,13 +137,18 @@ export default function Chat() {
             await updateDoc(doc(db, "chats", data.chatId), {
               messages: arrayUnion({
                 id: uuid(),
-                text,
+                name: currentUser.displayName,
+                text: newMessage,
                 senderId: currentUser.uid,
+                photoURL: currentUser.photoURL,
                 date: Timestamp.now(),
                 img: downloadURL,
               }),
             });
           });
+          // setNewMessage(() => "");
+          // setImg(() => null);
+          // imageInputRef.current.value = "";
         }
       );
     } else {
@@ -157,14 +166,23 @@ export default function Chat() {
 
     setNewMessage("");
     setImg(null);
+    imageInputRef.current.value = "";
   };
 
-  // console.log(currentUser, `dari chat.jsx`);
-  // console.log(messages, `====== `)
-  if(!currentUser) {
-    return (
-      <div>Loading</div>
-    )
+  useEffect(() => {
+    if(messages.length > 0) {
+      document
+        .querySelector(".flex.flex-col.h-full.overflow-x-auto.mb-4")
+        .scrollTo(
+          0,
+          document.querySelector(".flex.flex-col.h-full.overflow-x-auto.mb-4")
+            .scrollHeight
+        );
+    }
+  }, [messages]);
+
+  if (!currentUser) {
+    return <div>Loading</div>;
   }
   return (
     <>
@@ -208,7 +226,7 @@ export default function Chat() {
                   className="middle none center rounded-lg bg-red-500 py-3 px-6 font-sans text-xs font-bold uppercase text-white shadow-md shadow-red-500/20 transition-all hover:shadow-lg hover:shadow-red-500/40 focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                   data-ripple-light="true"
                   onClick={() => {
-                    signOut(auth)
+                    signOut(auth);
                     localStorage.clear();
                   }}
                 >
@@ -300,13 +318,18 @@ export default function Chat() {
           </div>
           <div className="flex flex-col flex-auto h-full p-6">
             <div className="flex flex-col flex-auto flex-shrink-0 rounded-2xl bg-gray-100 h-full p-4">
-              <div className="flex flex-col h-full overflow-x-auto mb-4">
+              <div
+                ref={ref}
+                className="flex flex-col h-full overflow-x-auto mb-4"
+              >
                 <div className="flex flex-col h-full">
                   <div className="grid grid-cols-12 gap-y-2">
                     {messages &&
-                      messages.map((el) => {
+                      messages.map((el, index) => {
+                        // console.log(index, `======`, el.img)
                         return (
-                          <div key={el.id}
+                          <div
+                            key={el.id}
                             className={
                               el.senderId !== currentUser.uid
                                 ? "col-start-1 col-end-8 p-3 rounded-lg"
@@ -330,6 +353,7 @@ export default function Chat() {
                               }
                             >
                               <div className="flex items-center justify-center h-10 w-10 rounded-full bg-indigo-500 flex-shrink-0">
+                                {/* {console.log(el)} */}
                                 <img
                                   src={el.photoURL}
                                   alt=""
@@ -340,10 +364,13 @@ export default function Chat() {
                                 className={
                                   el.senderId !== currentUser.uid
                                     ? "relative ml-3 text-sm bg-white py-2 px-4 shadow rounded-xl"
-                                    : "relative mr-3 text-sm bg-indigo-100 py-2 px-4 shadow-rounded-xl"
+                                    : "relative mr-3 text-sm bg-indigo-100 py-2 px-4 shadow rounded-xl"
                                 }
                               >
                                 <div>{el.text}</div>
+                                <div>
+                                  <img src={el.img} alt={el.img} />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -358,6 +385,8 @@ export default function Chat() {
                     type="file"
                     className="flex items-center justify-center text-gray-400 hover:text-gray-600"
                     id="file"
+                    // value={[img]}
+                    ref={imageInputRef}
                     onChange={(e) => setImg(e.target.files[0])}
                   >
                     {/* <svg
