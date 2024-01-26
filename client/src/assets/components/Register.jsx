@@ -9,6 +9,8 @@ import { doc, setDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { FaImages } from "react-icons/fa6";
 import { useState } from "react";
+import Swal from "sweetalert2";
+import { FirebaseError } from "firebase/app";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -42,13 +44,17 @@ export default function Register() {
             photoURL: downloadURL,
           });
           await setDoc(doc(db, "userChats", res.user.uid), {});
-          console.log('selesai bikin no error')
+          console.log("selesai bikin no error");
         });
       });
       localStorage.setItem("email", email);
-      navigate("/")
+      navigate("/");
     } catch (error) {
-      console.log(error);
+      // console.log(error.message.split(": ")[1])
+      Swal.fire({
+        icon: "error",
+        title: error.message.split(": ")[1],
+      });
     }
   };
 

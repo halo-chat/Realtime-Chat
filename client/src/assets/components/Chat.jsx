@@ -24,6 +24,7 @@ import { PiGifBold } from "react-icons/pi";
 import { AiOutlinePicture } from "react-icons/ai";
 import { TiDelete } from "react-icons/ti";
 import { LiaRocketchat } from "react-icons/lia";
+import Swal from "sweetalert2";
 
 export default function Chat() {
   const imageInputRef = useRef(null);
@@ -78,7 +79,10 @@ export default function Chat() {
         setUser(doc.data());
       });
     } catch (error) {
-      console.log(error);
+      Swal.fire({
+        icon: "error",
+        title: error,
+      })
     }
   };
 
