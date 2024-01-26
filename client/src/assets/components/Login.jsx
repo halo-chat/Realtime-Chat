@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../firebase";
+import Swal from "sweetalert2";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -10,10 +11,16 @@ export default function Login() {
       e.preventDefault();
       let email = e.target[0].value;
       let password = e.target[1].value;
-      signInWithEmailAndPassword(auth, email, password);
+      const response = await signInWithEmailAndPassword(auth, email, password);
       localStorage.setItem("email", email)
       navigate('/')
-    } catch (error) {}
+    } catch (error) {
+      console.log(error)
+      Swal.fire({
+        icon: "error",
+        title: error.message.split(": ")[1],
+      });
+    }
   };
   return (
     <>
